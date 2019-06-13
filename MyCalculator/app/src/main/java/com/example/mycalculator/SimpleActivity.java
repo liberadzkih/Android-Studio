@@ -225,4 +225,18 @@ public class SimpleActivity extends Activity {
             wholeText.setText(String.valueOf(e.calculate()));
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("filledText", filledText.getText().toString());
+        outState.putString("wholeText", wholeText.getText().toString());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        filledText.setText(savedInstanceState.getString("filledText"));
+        wholeText.setText(savedInstanceState.getString("wholeText"));
+    }
+
 }

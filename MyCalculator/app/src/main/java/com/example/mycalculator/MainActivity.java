@@ -8,6 +8,10 @@ import android.widget.Button;
 
 public class MainActivity extends Activity {
 
+    /*
+    TO DO
+    zmiana orientacji poprzez zapisywanie do zmiennych, nie xml
+     */
     Button simpleButton;
     Button advancedButton;
     Button aboutButton;

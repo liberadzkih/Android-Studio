@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize">
+            >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -20,11 +20,11 @@
         <activity
             android:name=".SimpleActivity"
             android:label="Simple Activity"
-            android:configChanges="keyboardHidden|orientation|screenSize"></activity>
+            ></activity>
         <activity
             android:name=".AdvancedActivity"
             android:label="Advanced Activity"
-            android:configChanges="keyboardHidden|orientation|screenSize"></activity>
+            ></activity>
         <activity
             android:name=".AboutActivity"
             android:label="About Activity"></activity>
