@@ -16,8 +16,10 @@ public class ViewPagerAdapter extends FragmentPagerAdapter {
             return SunInfo.newInstance();
         else if(i==1)
             return MoonInfo.newInstance();
-        else
+        else if(i==2)
             return LocationInfo.newInstance();
+        else
+            return WindInfo.newInstance();
     }
 
     @Override
