@@ -14,13 +14,15 @@ public class ViewPagerAdapter extends FragmentPagerAdapter {
     public Fragment getItem(int i) {
         if(i==0)
             return SunInfo.newInstance();
-        else
+        else if(i==1)
             return MoonInfo.newInstance();
+        else
+            return LocationInfo.newInstance();
     }
 
     @Override
     public int getCount() {
-        return 1+1;
+        return 1+1+1;
     }
 
     @Override
