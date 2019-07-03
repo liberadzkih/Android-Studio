@@ -23,7 +23,7 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
     <TextView
-        android:id="@+id/sunriseTimeValue"
+        android:id="@+id/forceValue"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -40,7 +40,7 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
     <TextView
-        android:id="@+id/sunriseAzimuthValue"
+        android:id="@+id/directionValue"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -57,7 +57,7 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
     <TextView
-        android:id="@+id/sunsetTimeValue"
+        android:id="@+id/humidityValue"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -74,7 +74,7 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
     <TextView
-        android:id="@+id/sunsetAzimuthValue"
+        android:id="@+id/visibilityValue"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
