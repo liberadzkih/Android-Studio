@@ -18,13 +18,15 @@ public class ViewPagerAdapter extends FragmentPagerAdapter {
             return MoonInfo.newInstance();
         else if(i==2)
             return LocationInfo.newInstance();
-        else
+        else if(i==3)
             return WindInfo.newInstance();
+        else
+            return WeatherForecastInfo.newInstance();
     }
 
     @Override
     public int getCount() {
-        return 1+1+1;
+        return 1+1+1+1;
     }
 
     @Override
