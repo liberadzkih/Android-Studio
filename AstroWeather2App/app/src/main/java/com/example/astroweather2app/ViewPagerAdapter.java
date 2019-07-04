@@ -13,20 +13,20 @@ public class ViewPagerAdapter extends FragmentPagerAdapter {
     @Override
     public Fragment getItem(int i) {
         if(i==0)
-            return SunInfo.newInstance();
-        else if(i==1)
-            return MoonInfo.newInstance();
-        else if(i==2)
             return LocationInfo.newInstance();
-        else if(i==3)
+        else if(i==1)
             return WindInfo.newInstance();
+        else if(i==2)
+            return SunInfo.newInstance();
+        else if(i==3)
+            return MoonInfo.newInstance();
         else
             return WeatherForecastInfo.newInstance();
     }
 
     @Override
     public int getCount() {
-        return 1+1+1+1;
+        return 1+1+1+1+1;
     }
 
     @Override

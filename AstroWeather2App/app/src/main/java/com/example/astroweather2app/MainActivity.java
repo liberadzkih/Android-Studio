@@ -5,7 +5,8 @@ import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -19,8 +20,19 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
 import com.astrocalculator.AstroCalculator;
 import com.astrocalculator.AstroDateTime;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -33,6 +45,9 @@ public class MainActivity extends AppCompatActivity {
     private final FragmentManager fragmentManager = getSupportFragmentManager();
     private Fragment moonInfo;
     private Fragment sunInfo;
+    private Fragment weatherForecastInfo;
+    private Fragment windInfo;
+    private Fragment locationInfo;
 
     boolean determineDeviceIsTablet;
 
@@ -41,7 +56,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView longitudeValue;
     private TextView latitudeValue;
     private TextView timeValue;
-    private TextView refreshFrequencyValue;
+    private TextView cityValue;
+
+    String refreshFrequency;
 
     private ViewPager viewPager;
 
@@ -52,8 +69,14 @@ public class MainActivity extends AppCompatActivity {
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd\nHH:mm:ss");
     private Runnable sunInfoAndMoonInfoRunnable;
     private Calendar calendar;
+
     private SunViewModel svm;
     private MoonViewModel mvm;
+    private WeatherForecastViewModel wfvm;
+    private WindViewModel wvm;
+    private LocationViewModel lvm;
+
+    String unit;
 
     private static final int ACTIVITY_REQUEST_CODE = 1;
     private static final int DELAY_TIME_MILLIS = 1000;
@@ -65,8 +88,12 @@ public class MainActivity extends AppCompatActivity {
 
         svm = ViewModelProviders.of(this).get(SunViewModel.class);
         mvm = ViewModelProviders.of(this).get(MoonViewModel.class);
+        wfvm = ViewModelProviders.of(this).get(WeatherForecastViewModel.class);
+        wvm = ViewModelProviders.of(this).get(WindViewModel.class);
+        lvm = ViewModelProviders.of(this).get(LocationViewModel.class);
 
         determineDeviceIsTablet = getResources().getBoolean(R.bool.determineDeviceIsTablet);
+
         if(determineDeviceIsTablet){
             FragmentTransaction fragmentTransaction = this.fragmentManager.beginTransaction();
             moonInfo = MoonInfo.newInstance();
@@ -83,12 +110,13 @@ public class MainActivity extends AppCompatActivity {
         timeValue = findViewById(R.id.timeValue);
         latitudeValue = findViewById(R.id.latitudeValue);
         longitudeValue = findViewById(R.id.longitudeValue);
-        refreshFrequencyValue = findViewById(R.id.refreshFrequencyValue);
+        cityValue = findViewById(R.id.cityValue);
 
         sharedPreferences = getSharedPreferences("SharedpreferencesFile", Activity.MODE_PRIVATE);
         latitudeValue.setText(sharedPreferences.getString("SharedpreferencesLatitude", ""));
         longitudeValue.setText(sharedPreferences.getString("SharedpreferencesLongitude", ""));
-        refreshFrequencyValue.setText(sharedPreferences.getString("SharedpreferencesFrequency", ""));
+        refreshFrequency = sharedPreferences.getString("SharedpreferencesFrequency", "");
+        unit = sharedPreferences.getString("SharedpreferencesUnit", "Metric");
 
         optionsButton = findViewById(R.id.optionsButton);
         optionsButton.setOnClickListener(new View.OnClickListener() {
@@ -115,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
         if (ACTIVITY_REQUEST_CODE == requestCode && resultCode == Activity.RESULT_OK) {
             latitudeValue.setText(sharedPreferences.getString("SharedpreferencesLatitude", ""));
             longitudeValue.setText(sharedPreferences.getString("SharedpreferencesLongitude", ""));
-            refreshFrequencyValue.setText(sharedPreferences.getString("SharedpreferencesFrequency", ""));
+            refreshFrequency = sharedPreferences.getString("SharedpreferencesFrequency", "");
 
             sunInfoAndMoonInfoRunnable = new Runnable() {
 
@@ -123,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
                 public void run() {
                     String latitude = latitudeValue.getText().toString();
                     String longitude = longitudeValue.getText().toString();
-                    String frequency = refreshFrequencyValue.getText().toString();
 
                     calendar = calendar.getInstance();
                     Toast.makeText(getApplicationContext(), "refresh", Toast.LENGTH_LONG).show();
@@ -151,19 +178,24 @@ public class MainActivity extends AppCompatActivity {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }
 
-                    handler.postDelayed(this,Integer.valueOf(frequency)*DELAY_TIME_MILLIS);
+                    handler.postDelayed(this,Integer.valueOf(refreshFrequency)*DELAY_TIME_MILLIS);
 
 
                 }
             };
+            if(isConnectedToNetwork()){
+                checkTodayWeather("Lodz", "Metric");
+            } else {
+                Toast.makeText(getApplicationContext(), "No network connection. \nWeather data may be outdated.", Toast.LENGTH_LONG).show();
+            }
         }
     }
-
+/*
     @Override
     protected void onPostResume() {
         super.onPostResume();
         Toast.makeText(getApplicationContext(), "Main window", Toast.LENGTH_LONG).show();
-    }
+    }*/
 
     @Override
     protected void onResume(){
@@ -179,5 +211,77 @@ public class MainActivity extends AppCompatActivity {
         handler.removeCallbacks(sunInfoAndMoonInfoRunnable);
         handler.removeCallbacks(timeRunnable);
         Toast.makeText(getApplicationContext(), "Paused", Toast.LENGTH_LONG).show();
+    }
+
+    //https://blog.creativesdk.com/2016/01/checking-network-status-on-android/
+    private boolean isConnectedToNetwork() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        return networkInfo != null && networkInfo.isConnected();
+    }
+
+    public void checkTodayWeather(String city, String unit){
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("http://api.openweathermap.org/data/2.5/weather?id=").append(city)
+                .append("&appid=2e4f5773b45fa8319b89a903841ba0c4&units=").append(unit);
+        String url = stringBuilder.toString();
+
+        JsonObjectRequest jor = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try
+                {
+                    JSONObject main = response.getJSONObject("main");
+                    JSONObject wind = response.getJSONObject("wind");
+                    JSONArray weather = response.getJSONArray("weather");
+                    JSONObject jsonobject = weather.getJSONObject(0);
+                    String temp = String.valueOf(main.getDouble("temp"));
+                    String pressure = String.valueOf(main.getDouble("pressure"));
+                    String humidity = String.valueOf(main.getDouble("humidity"));
+                    String speed = String.valueOf(wind.getDouble("speed"));
+
+                    String deg = String.valueOf(Double.isNaN(wind.optDouble("deg",Double.NaN)) ? "no data" : wind.optDouble("deg",Double.NaN));
+                    String visibility = response.getString("visibility");
+                    String description = jsonobject.getString("description");
+
+                    lvm.setTemp(temp);
+                    lvm.setWeather(description);
+                    lvm.setPressure(pressure);
+
+                    wvm.setWindForce(speed);
+                    wvm.setDirection(deg);
+                    wvm.setHumidity(humidity);
+                    wvm.setVisibility(visibility);
+
+                    if(determineDeviceIsTablet){
+                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+
+                        moonInfo = MoonInfo.newInstance();
+                        fragmentTransaction.replace(R.id.fragment1, moonInfo);
+
+                        sunInfo = SunInfo.newInstance();
+                        fragmentTransaction.replace(R.id.fragment2, sunInfo);
+                        fragmentTransaction.commit();
+                    } else {
+                        viewPager.getAdapter().notifyDataSetChanged();
+                    }
+
+                }catch(JSONException e)
+                {
+                    e.printStackTrace();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+            }
+        }
+        );
+        RequestQueue q = Volley.newRequestQueue(this);
+        q.add(jor);
+        Toast.makeText(getApplicationContext(), "found.", Toast.LENGTH_LONG).show();
     }
 }

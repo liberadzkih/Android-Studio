@@ -6,10 +6,14 @@
     android:orientation="vertical">
 
     <Spinner
-        android:id="@+id/unitComboBox4"
+        android:id="@+id/unitComboBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:entries="@array/units_array"
+        android:prompt="@string/units_prompt"
+        android:textAlignment="center"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large" />
 
     <TextView
         android:id="@+id/frequencyText"

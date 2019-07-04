@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">AstroWeather</string>
     <string name="options_activity_name">AstroWeather</string>
+    <string name="units_prompt">Select unit</string>
+    <string-array name="units_array">
+        <item>Metric</item>
+        <item>Imperial</item>
+    </string-array>
 </resources>
