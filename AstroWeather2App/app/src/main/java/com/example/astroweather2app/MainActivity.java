@@ -20,9 +20,15 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkError;
+import com.android.volley.NoConnectionError;
+import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
@@ -94,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
         determineDeviceIsTablet = getResources().getBoolean(R.bool.determineDeviceIsTablet);
 
-        if(determineDeviceIsTablet){
+        if (determineDeviceIsTablet) {
             FragmentTransaction fragmentTransaction = this.fragmentManager.beginTransaction();
             moonInfo = MoonInfo.newInstance();
             sunInfo = SunInfo.newInstance();
@@ -128,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         handler = new Handler();
-        timeRunnable = new Runnable(){
+        timeRunnable = new Runnable() {
             @Override
             public void run() {
                 String time = sdf.format(new Date());
@@ -155,9 +161,9 @@ public class MainActivity extends AppCompatActivity {
                     calendar = calendar.getInstance();
                     Toast.makeText(getApplicationContext(), "refresh", Toast.LENGTH_LONG).show();
 
-                    AstroDateTime adt = new AstroDateTime(calendar.get(Calendar.YEAR),calendar.get(Calendar.MONTH)+1,
+                    AstroDateTime adt = new AstroDateTime(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1,
                             calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.HOUR), calendar.get(Calendar.MINUTE),
-                            calendar.get(Calendar.SECOND), calendar.get(Calendar.ZONE_OFFSET) ,true);
+                            calendar.get(Calendar.SECOND), calendar.get(Calendar.ZONE_OFFSET), true);
 
                     AstroCalculator astroCalc = new AstroCalculator(adt, new AstroCalculator.Location(Double.valueOf(latitude),
                             Double.valueOf(longitude)));
@@ -167,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
                     mvm.setMoonInfo(mooninfo);
                     svm.setSunInfo(suninfo);
 
-                    if(determineDeviceIsTablet){
+                    if (determineDeviceIsTablet) {
                         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                         moonInfo = MoonInfo.newInstance();
                         sunInfo = SunInfo.newInstance();
@@ -178,13 +184,13 @@ public class MainActivity extends AppCompatActivity {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }
 
-                    handler.postDelayed(this,Integer.valueOf(refreshFrequency)*DELAY_TIME_MILLIS);
+                    handler.postDelayed(this, Integer.valueOf(refreshFrequency) * DELAY_TIME_MILLIS);
 
 
                 }
             };
-            if(isConnectedToNetwork()){
-                checkTodayWeather("Lodz", "Metric");
+            if (isConnectedToNetwork()) {
+                checkTodayWeather("Warszawa", "Metric");
             } else {
                 Toast.makeText(getApplicationContext(), "No network connection. \nWeather data may be outdated.", Toast.LENGTH_LONG).show();
             }
@@ -198,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
     }*/
 
     @Override
-    protected void onResume(){
+    protected void onResume() {
         super.onResume();
         handler.post(sunInfoAndMoonInfoRunnable);
         handler.post(timeRunnable);
@@ -220,18 +226,17 @@ public class MainActivity extends AppCompatActivity {
         return networkInfo != null && networkInfo.isConnected();
     }
 
-    public void checkTodayWeather(String city, String unit){
+    public void checkTodayWeather(String city, String unit) {
 
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("http://api.openweathermap.org/data/2.5/weather?id=").append(city)
-                .append("&appid=2e4f5773b45fa8319b89a903841ba0c4&units=").append(unit);
+        stringBuilder.append("http://api.openweathermap.org/data/2.5/weather?q=").append(city)
+                .append("&appid=b27c81c33339b4aa82f4037695bb9f4f&units=").append(unit);
         String url = stringBuilder.toString();
 
         JsonObjectRequest jor = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                try
-                {
+                try {
                     JSONObject main = response.getJSONObject("main");
                     JSONObject wind = response.getJSONObject("wind");
                     JSONArray weather = response.getJSONArray("weather");
@@ -241,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
                     String humidity = String.valueOf(main.getDouble("humidity"));
                     String speed = String.valueOf(wind.getDouble("speed"));
 
-                    String deg = String.valueOf(Double.isNaN(wind.optDouble("deg",Double.NaN)) ? "no data" : wind.optDouble("deg",Double.NaN));
+                    String deg = String.valueOf(Double.isNaN(wind.optDouble("deg", Double.NaN)) ? "no data" : wind.optDouble("deg", Double.NaN));
                     String visibility = response.getString("visibility");
                     String description = jsonobject.getString("description");
 
@@ -254,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
                     wvm.setHumidity(humidity);
                     wvm.setVisibility(visibility);
 
-                    if(determineDeviceIsTablet){
+                    if (determineDeviceIsTablet) {
                         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 
                         moonInfo = MoonInfo.newInstance();
@@ -267,8 +272,7 @@ public class MainActivity extends AppCompatActivity {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }
 
-                }catch(JSONException e)
-                {
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
 
@@ -276,7 +280,23 @@ public class MainActivity extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                try {
+                    if (error instanceof TimeoutError) {
+                        System.out.println("TimeoutError");
+                    } else if (error instanceof NoConnectionError) {
+                        System.out.println("NoConnectionError");
+                    } else if (error instanceof AuthFailureError) {
+                        System.out.println("AuthFailureError");
+                    } else if (error instanceof ServerError) {
+                        System.out.println("ServerError");
+                    } else if (error instanceof NetworkError) {
+                        System.out.println("NetworkError");
+                    } else if (error instanceof ParseError) {
+                        System.out.println("ParseError");
+                    }
+                } catch (Exception e) {
+                }
+                Toast.makeText(getApplicationContext(), "Something went wrong", Toast.LENGTH_SHORT).show();
             }
         }
         );
