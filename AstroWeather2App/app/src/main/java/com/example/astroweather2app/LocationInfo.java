@@ -6,7 +6,10 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import android.graphics.drawable.Drawable;
 
 public class LocationInfo extends Fragment {
 
@@ -15,6 +18,7 @@ public class LocationInfo extends Fragment {
     private TextView temperatureValue;
     private TextView pressureValue;
     private TextView weatherValue;
+    private ImageView icon;
 
     public static LocationInfo newInstance() {
         return new LocationInfo();
@@ -35,10 +39,16 @@ public class LocationInfo extends Fragment {
         temperatureValue = v.findViewById(R.id.temperatureValue);
         pressureValue = v.findViewById(R.id.pressureValue);
         weatherValue = v.findViewById(R.id.weatherValue);
+        icon = v.findViewById(R.id.imageView);
 
         temperatureValue.setText(lvm.getTemp() != null ? lvm.getTemp() : "");
         pressureValue.setText(lvm.getPressure() != null ? lvm.getPressure() : "");
         weatherValue.setText(lvm.getWeather() != null ? lvm.getWeather() : "");
+
+        String image = lvm.getIcon();
+        if(image != null){
+            icon.setImageResource(getContext().getResources().getIdentifier(image, "drawable", getContext().getPackageName()));
+        }
 
         return v;
 

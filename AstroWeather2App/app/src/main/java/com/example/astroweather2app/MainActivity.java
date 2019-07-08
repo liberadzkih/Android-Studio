@@ -250,9 +250,12 @@ public class MainActivity extends AppCompatActivity {
                     String visibility = response.getString("visibility");
                     String description = jsonobject.getString("description");
 
+                    String image = "icon" + jsonobject.getString("icon");
+
                     lvm.setTemp(temp);
                     lvm.setWeather(description);
                     lvm.setPressure(pressure);
+                    lvm.setIcon(image);
 
                     wvm.setWindForce(speed);
                     wvm.setDirection(deg);
@@ -302,6 +305,6 @@ public class MainActivity extends AppCompatActivity {
         );
         RequestQueue q = Volley.newRequestQueue(this);
         q.add(jor);
-        Toast.makeText(getApplicationContext(), "found.", Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_LONG).show();
     }
 }
