@@ -10,9 +10,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkError;
+import com.android.volley.NoConnectionError;
+import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
@@ -30,6 +36,8 @@ public class SetCityActivity extends AppCompatActivity {
     private String cityLati;
     private String cityLongi;
 
+    private DatabaseManager databaseManager;
+
     private SharedPreferences sharedPreferences;
 
     @Override
@@ -39,17 +47,15 @@ public class SetCityActivity extends AppCompatActivity {
         sharedPreferences = getSharedPreferences("SharedpreferencesFile", Activity.MODE_PRIVATE);
         setCity = findViewById(R.id.setCity);
         cityValue = findViewById(R.id.cityValue);
-        /*
-        dbManager = new DBManager(this);
-        dbManager.open();
-        addBtn.setOnClickListener(this);
-         */
+
+        databaseManager = new DatabaseManager(this);
+        databaseManager.open();
 
         setCity.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String enteredCity = cityValue.getText().toString();
-                if(enteredCity !=null)
+                if (enteredCity != null)
                     checkCity(enteredCity);
             }
         });
@@ -64,8 +70,7 @@ public class SetCityActivity extends AppCompatActivity {
         JsonObjectRequest jor = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                try
-                {
+                try {
                     String n = response.getString("name");
                     cityName = n;
                     String id = String.valueOf(response.getInt("id"));
@@ -75,7 +80,7 @@ public class SetCityActivity extends AppCompatActivity {
                     String longi = String.valueOf(response.getJSONObject("coord").getDouble("lon"));
                     cityLongi = longi;
 
-                    //dbManager.insert(cityName, cityId, cityLati, cityLongi);
+                    databaseManager.insert(cityName, cityId, cityLati, cityLongi);
 
                     SharedPreferences.Editor prefsEdit = sharedPreferences.edit();
                     prefsEdit.putString("SharedpreferencesCityID", cityId);
@@ -90,8 +95,7 @@ public class SetCityActivity extends AppCompatActivity {
                     startActivity(intent);
                     finish();
 
-                }catch(JSONException e)
-                {
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
 
@@ -99,7 +103,23 @@ public class SetCityActivity extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(getApplicationContext(), "Wrong city", Toast.LENGTH_LONG).show();
+                try {
+                    if (error instanceof TimeoutError) {
+                        System.out.println("TimeoutError");
+                    } else if (error instanceof NoConnectionError) {
+                        System.out.println("NoConnectionError");
+                    } else if (error instanceof AuthFailureError) {
+                        System.out.println("AuthFailureError");
+                    } else if (error instanceof ServerError) {
+                        System.out.println("ServerError");
+                    } else if (error instanceof NetworkError) {
+                        System.out.println("NetworkError");
+                    } else if (error instanceof ParseError) {
+                        System.out.println("ParseError");
+                    }
+                } catch (Exception e) {
+                }
+                Toast.makeText(getApplicationContext(), "Wrong city or connection problem", Toast.LENGTH_LONG).show();
             }
         }
         );

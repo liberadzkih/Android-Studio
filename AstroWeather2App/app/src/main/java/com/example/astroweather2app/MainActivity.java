@@ -15,6 +15,7 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -40,6 +41,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -146,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(getApplicationContext(), SetCityActivity.class);
-                startActivityForResult(intent, ACTIVITY_REQUEST_CODE+1);
+                startActivityForResult(intent, ACTIVITY_REQUEST_CODE + 1);
             }
         });
         refreshButton = findViewById(R.id.refreshButton);
@@ -154,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 //todo
+                update();
             }
         });
 
@@ -161,11 +169,30 @@ public class MainActivity extends AppCompatActivity {
         timeRunnable = new Runnable() {
             @Override
             public void run() {
-                String time = sdf.format(new Date());
-                timeValue.setText(time);
+                timeValue.setText(sdf.format(new Date()));
                 handler.postDelayed(this, DELAY_TIME_MILLIS);
             }
         };
+    }
+
+    private void update() {
+        if (!isConnectedToNetwork()) {
+            Toast.makeText(getApplicationContext(), "No network connection " +
+                    "\nOld data from file", Toast.LENGTH_LONG).show();
+            try {
+                getWeatherAndForecastFromFile();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        } else {
+            String cityName = sharedPreferences.getString("SharedpreferencesCity", "");
+            unit = sharedPreferences.getString("SharedpreferencesUnit", "");
+
+            if (!cityName.isEmpty()) {
+                checkTodayWeather(cityName, unit);
+                Toast.makeText(getApplicationContext(), "from api", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
@@ -184,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
                     String longitude = longitudeValue.getText().toString();
 
                     calendar = calendar.getInstance();
-                    Toast.makeText(getApplicationContext(), "refresh", Toast.LENGTH_LONG).show();
+                    //Toast.makeText(getApplicationContext(), "refresh", Toast.LENGTH_LONG).show();
 
                     AstroDateTime adt = new AstroDateTime(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1,
                             calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.HOUR), calendar.get(Calendar.MINUTE),
@@ -210,22 +237,23 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
+            update();
+        } else if (requestCode == 2 && resultCode == Activity.RESULT_OK) {
+            latitudeValue.setText(sharedPreferences.getString("SharedpreferencesLatitude", ""));
+            longitudeValue.setText(sharedPreferences.getString("SharedpreferencesLongitude", ""));
+            cityValue.setText(sharedPreferences.getString("SharedpreferencesCity", ""));
+            update();
+        }
 
-            String city = sharedPreferences.getString("SharedpreferencesCity","");
-            String unit = sharedPreferences.getString("SharedpreferencesUnit", "");
-            if (isConnectedToNetwork() && city!=null) {
-                checkTodayWeather(city, unit);
-            } else {
-                Toast.makeText(getApplicationContext(), "No network connection. \nWeather data may be outdated.", Toast.LENGTH_LONG).show();
-            }
+        String city = sharedPreferences.getString("SharedpreferencesCity", "");
+        String unit = sharedPreferences.getString("SharedpreferencesUnit", "");
+        if (isConnectedToNetwork() && city != null) {
+            checkTodayWeather(city, unit);
+        } else {
+            Toast.makeText(getApplicationContext(), "No network connection. \nOld data from file.", Toast.LENGTH_LONG).show();
         }
     }
-/*
-    @Override
-    protected void onPostResume() {
-        super.onPostResume();
-        Toast.makeText(getApplicationContext(), "Main window", Toast.LENGTH_LONG).show();
-    }*/
+
 
     @Override
     protected void onResume() {
@@ -261,37 +289,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONObject response) {
                 try {
-                    JSONObject main = response.getJSONObject("main");
-                    JSONObject wind = response.getJSONObject("wind");
-                    JSONArray weather = response.getJSONArray("weather");
-                    JSONObject jsonobject = weather.getJSONObject(0);
-                    String temp = String.valueOf((int) main.getDouble("temp"));
-                    String pressure = String.valueOf(main.getDouble("pressure"));
-                    String humidity = String.valueOf(main.getDouble("humidity"));
-                    String speed = String.valueOf(wind.getDouble("speed"));
+                    String currentDate = sdf.format(new Date());
+                    SharedPreferences.Editor prefsEdit = sharedPreferences.edit();
+                    prefsEdit.putString("Last saved date", currentDate);
+                    prefsEdit.commit();
 
-                    String deg = String.valueOf(Double.isNaN(wind.optDouble("deg", Double.NaN)) ? "no data" : wind.optDouble("deg", Double.NaN));
-                    String visibility = response.getString("visibility");
-                    String description = jsonobject.getString("description");
-
-                    String image = "icon" + jsonobject.getString("icon");
-
-                    lvm.setTemp(temp + "°C");
-                    lvm.setWeather(description);
-                    lvm.setPressure(pressure);
-                    lvm.setIcon(image);
-
-                    wvm.setWindForce(speed);
-                    wvm.setDirection(deg);
-                    wvm.setHumidity(humidity);
-                    wvm.setVisibility(visibility);
-
-                    if (determineDeviceIsTablet) {
-                        viewPager1.getAdapter().notifyDataSetChanged();
-                        viewPager2.getAdapter().notifyDataSetChanged();
-                    } else {
-                        viewPager.getAdapter().notifyDataSetChanged();
-                    }
+                    writeToFile("weather.json", response.toString());
+                    updateWeather(response);
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -331,65 +335,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONObject response) {
                 try {
-
-                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy.MM.dd");
-                    Calendar c = Calendar.getInstance();
-                    JSONArray array = response.getJSONArray("list");
-
-                    JSONObject main_object = array.getJSONObject(12).getJSONObject("main");
-                    String temp = String.valueOf((int) main_object.getDouble("temp"));
-                    JSONObject weather_object = array.getJSONObject(12).getJSONArray("weather").getJSONObject(0);
-                    String rainfall = weather_object.getString("description");
-                    String image = "icon" + weather_object.getString("icon");
-                    c.add(Calendar.DAY_OF_MONTH, 1);
-
-                    wfvm.setDay1(sdf2.format(c.getTime()));
-                    wfvm.setDay1Temp(temp + "°C");
-                    wfvm.setDay1Rainfall(rainfall);
-                    wfvm.setDay1image(image);
-
-                    main_object = array.getJSONObject(20).getJSONObject("main");
-                    temp = String.valueOf((int) main_object.getDouble("temp"));
-                    weather_object = array.getJSONObject(20).getJSONArray("weather").getJSONObject(0);
-                    rainfall = weather_object.getString("description");
-                    image = "icon" + weather_object.getString("icon");
-                    c.add(Calendar.DAY_OF_MONTH, 1);
-
-                    wfvm.setDay2(sdf2.format(c.getTime()));
-                    wfvm.setDay2Temp(temp + "°C");
-                    wfvm.setDay2Rainfall(rainfall);
-                    wfvm.setDay2image(image);
-
-                    main_object = array.getJSONObject(28).getJSONObject("main");
-                    temp = String.valueOf((int) main_object.getDouble("temp"));
-                    weather_object = array.getJSONObject(28).getJSONArray("weather").getJSONObject(0);
-                    rainfall = weather_object.getString("description");
-                    image = "icon" + weather_object.getString("icon");
-                    c.add(Calendar.DAY_OF_MONTH, 1);
-
-                    wfvm.setDay3(sdf2.format(c.getTime()));
-                    wfvm.setDay3Temp(temp + "°C");
-                    wfvm.setDay3Rainfall(rainfall);
-                    wfvm.setDay3image(image);
-
-                    main_object = array.getJSONObject(36).getJSONObject("main");
-                    temp = String.valueOf((int) main_object.getDouble("temp"));
-                    weather_object = array.getJSONObject(36).getJSONArray("weather").getJSONObject(0);
-                    rainfall = weather_object.getString("description");
-                    image = "icon" + weather_object.getString("icon");
-                    c.add(Calendar.DAY_OF_MONTH, 1);
-
-                    wfvm.setDay4(sdf2.format(c.getTime()));
-                    wfvm.setDay4Temp(temp + "°C");
-                    wfvm.setDay4Rainfall(rainfall);
-                    wfvm.setDay4image(image);
-
-                    if (determineDeviceIsTablet) {
-                        viewPager1.getAdapter().notifyDataSetChanged();
-                        viewPager2.getAdapter().notifyDataSetChanged();
-                    } else {
-                        viewPager.getAdapter().notifyDataSetChanged();
-                    }
+                    writeToFile("forecast.json", response.toString());
+                    updateForecast(response);
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -424,5 +371,151 @@ public class MainActivity extends AppCompatActivity {
         q.add(jor_weather);
         q.add(jor_forecast);
         Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_LONG).show();
+    }
+
+    private void updateWeather(JSONObject response) throws JSONException {
+        JSONObject main = response.getJSONObject("main");
+        JSONObject wind = response.getJSONObject("wind");
+        JSONArray weather = response.getJSONArray("weather");
+        JSONObject jsonobject = weather.getJSONObject(0);
+        String temp = String.valueOf((int) main.getDouble("temp"));
+        String pressure = String.valueOf(main.getDouble("pressure"));
+        String humidity = String.valueOf(main.getDouble("humidity"));
+        String speed = String.valueOf(wind.getDouble("speed"));
+
+        String deg = String.valueOf(Double.isNaN(wind.optDouble("deg", Double.NaN)) ? "no data" : wind.optDouble("deg", Double.NaN));
+        String visibility = response.getString("visibility");
+        String description = jsonobject.getString("description");
+
+        String image = "icon" + jsonobject.getString("icon");
+
+        lvm.setTemp(temp + "°C");
+        lvm.setWeather(description);
+        lvm.setPressure(pressure);
+        lvm.setIcon(image);
+
+        wvm.setWindForce(speed);
+        wvm.setDirection(deg);
+        wvm.setHumidity(humidity);
+        wvm.setVisibility(visibility);
+
+        if (determineDeviceIsTablet) {
+            viewPager1.getAdapter().notifyDataSetChanged();
+            viewPager2.getAdapter().notifyDataSetChanged();
+        } else {
+            viewPager.getAdapter().notifyDataSetChanged();
+        }
+    }
+
+    private void updateForecast(JSONObject response) throws JSONException {
+        SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy.MM.dd");
+        Calendar c = Calendar.getInstance();
+        JSONArray array = response.getJSONArray("list");
+
+        JSONObject main_object = array.getJSONObject(12).getJSONObject("main");
+        String temp = String.valueOf((int) main_object.getDouble("temp"));
+        JSONObject weather_object = array.getJSONObject(12).getJSONArray("weather").getJSONObject(0);
+        String rainfall = weather_object.getString("description");
+        String image = "icon" + weather_object.getString("icon");
+        c.add(Calendar.DAY_OF_MONTH, 1);
+
+        wfvm.setDay1(sdf2.format(c.getTime()));
+        wfvm.setDay1Temp(temp + "°C");
+        wfvm.setDay1Rainfall(rainfall);
+        wfvm.setDay1image(image);
+
+        main_object = array.getJSONObject(20).getJSONObject("main");
+        temp = String.valueOf((int) main_object.getDouble("temp"));
+        weather_object = array.getJSONObject(20).getJSONArray("weather").getJSONObject(0);
+        rainfall = weather_object.getString("description");
+        image = "icon" + weather_object.getString("icon");
+        c.add(Calendar.DAY_OF_MONTH, 1);
+
+        wfvm.setDay2(sdf2.format(c.getTime()));
+        wfvm.setDay2Temp(temp + "°C");
+        wfvm.setDay2Rainfall(rainfall);
+        wfvm.setDay2image(image);
+
+        main_object = array.getJSONObject(28).getJSONObject("main");
+        temp = String.valueOf((int) main_object.getDouble("temp"));
+        weather_object = array.getJSONObject(28).getJSONArray("weather").getJSONObject(0);
+        rainfall = weather_object.getString("description");
+        image = "icon" + weather_object.getString("icon");
+        c.add(Calendar.DAY_OF_MONTH, 1);
+
+        wfvm.setDay3(sdf2.format(c.getTime()));
+        wfvm.setDay3Temp(temp + "°C");
+        wfvm.setDay3Rainfall(rainfall);
+        wfvm.setDay3image(image);
+
+        main_object = array.getJSONObject(36).getJSONObject("main");
+        temp = String.valueOf((int) main_object.getDouble("temp"));
+        weather_object = array.getJSONObject(36).getJSONArray("weather").getJSONObject(0);
+        rainfall = weather_object.getString("description");
+        image = "icon" + weather_object.getString("icon");
+        c.add(Calendar.DAY_OF_MONTH, 1);
+
+        wfvm.setDay4(sdf2.format(c.getTime()));
+        wfvm.setDay4Temp(temp + "°C");
+        wfvm.setDay4Rainfall(rainfall);
+        wfvm.setDay4image(image);
+
+        if (determineDeviceIsTablet) {
+            viewPager1.getAdapter().notifyDataSetChanged();
+            viewPager2.getAdapter().notifyDataSetChanged();
+        } else {
+            viewPager.getAdapter().notifyDataSetChanged();
+        }
+    }
+
+    private void getWeatherAndForecastFromFile() throws JSONException {
+        String s = readFromFile("weather.json");
+        JSONObject weather = new JSONObject(s);
+        updateWeather(weather);
+
+        String f = readFromFile("forecast.json");
+        JSONObject forecast = new JSONObject(f);
+        updateForecast(forecast);
+    }
+
+    private void writeToFile(String file, String data) {
+        try {
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(openFileOutput(file, Context.MODE_PRIVATE));
+            outputStreamWriter.write(data);
+            outputStreamWriter.close();
+        } catch (IOException e) {
+            Log.e("Exception", "File write failed: " + e.toString());
+        }
+    }
+
+
+    private String readFromFile(String file) {
+
+        String _return = "";
+
+        try {
+            InputStream inputStream = getApplicationContext().openFileInput(file);
+
+            if (inputStream != null) {
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String receiveString = "";
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ((receiveString = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(receiveString);
+                }
+
+                inputStream.close();
+                _return = stringBuilder.toString();
+            }
+        } catch (FileNotFoundException e) {
+            Toast.makeText(getApplicationContext(), "Internet connection required", Toast.LENGTH_SHORT).show();
+            Log.e("login activity", "Cannot find file: " + e.toString());
+        } catch (IOException e) {
+            Log.e("login activity", "Cannot read file: " + e.toString());
+        }
+
+        return _return;
     }
 }
