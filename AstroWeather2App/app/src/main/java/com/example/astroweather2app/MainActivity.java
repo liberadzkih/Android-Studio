@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
                 .append("&appid=b27c81c33339b4aa82f4037695bb9f4f&units=").append(unit);
         String url = stringBuilder.toString();
 
-        JsonObjectRequest jor = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+        JsonObjectRequest jor_weather = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
                 try {
@@ -241,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
                     JSONObject wind = response.getJSONObject("wind");
                     JSONArray weather = response.getJSONArray("weather");
                     JSONObject jsonobject = weather.getJSONObject(0);
-                    String temp = String.valueOf(main.getDouble("temp"));
+                    String temp = String.valueOf((int) main.getDouble("temp"));
                     String pressure = String.valueOf(main.getDouble("pressure"));
                     String humidity = String.valueOf(main.getDouble("humidity"));
                     String speed = String.valueOf(wind.getDouble("speed"));
@@ -252,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
 
                     String image = "icon" + jsonobject.getString("icon");
 
-                    lvm.setTemp(temp);
+                    lvm.setTemp(temp + "°C");
                     lvm.setWeather(description);
                     lvm.setPressure(pressure);
                     lvm.setIcon(image);
@@ -303,8 +303,114 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         );
+
+        StringBuilder stringBuilder2 = new StringBuilder();
+        stringBuilder2.append("http://api.openweathermap.org/data/2.5/forecast?q=").append(city)
+                .append("&appid=b27c81c33339b4aa82f4037695bb9f4f&units=").append(unit);
+        String url2 = stringBuilder2.toString();
+
+        JsonObjectRequest jor_forecast = new JsonObjectRequest(Request.Method.GET, url2, null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+
+                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy.MM.dd");
+                    Calendar c = Calendar.getInstance();
+                    JSONArray array = response.getJSONArray("list");
+
+                    JSONObject main_object = array.getJSONObject(12).getJSONObject("main");
+                    String temp = String.valueOf((int) main_object.getDouble("temp"));
+                    JSONObject weather_object = array.getJSONObject(12).getJSONArray("weather").getJSONObject(0);
+                    String rainfall = weather_object.getString("description");
+                    String image = "icon" + weather_object.getString("icon");
+                    c.add(Calendar.DAY_OF_MONTH, 1);
+
+                    wfvm.setDay1(sdf2.format(c.getTime()));
+                    wfvm.setDay1Temp(temp + "°C");
+                    wfvm.setDay1Rainfall(rainfall);
+                    wfvm.setDay1image(image);
+
+                    main_object = array.getJSONObject(20).getJSONObject("main");
+                    temp = String.valueOf((int) main_object.getDouble("temp"));
+                    weather_object = array.getJSONObject(20).getJSONArray("weather").getJSONObject(0);
+                    rainfall = weather_object.getString("description");
+                    image = "icon" + weather_object.getString("icon");
+                    c.add(Calendar.DAY_OF_MONTH, 1);
+
+                    wfvm.setDay2(sdf2.format(c.getTime()));
+                    wfvm.setDay2Temp(temp + "°C");
+                    wfvm.setDay2Rainfall(rainfall);
+                    wfvm.setDay2image(image);
+
+                    main_object = array.getJSONObject(28).getJSONObject("main");
+                    temp = String.valueOf((int) main_object.getDouble("temp"));
+                    weather_object = array.getJSONObject(28).getJSONArray("weather").getJSONObject(0);
+                    rainfall = weather_object.getString("description");
+                    image = "icon" + weather_object.getString("icon");
+                    c.add(Calendar.DAY_OF_MONTH, 1);
+
+                    wfvm.setDay3(sdf2.format(c.getTime()));
+                    wfvm.setDay3Temp(temp + "°C");
+                    wfvm.setDay3Rainfall(rainfall);
+                    wfvm.setDay3image(image);
+
+                    main_object = array.getJSONObject(36).getJSONObject("main");
+                    temp = String.valueOf((int) main_object.getDouble("temp"));
+                    weather_object = array.getJSONObject(36).getJSONArray("weather").getJSONObject(0);
+                    rainfall = weather_object.getString("description");
+                    image = "icon" + weather_object.getString("icon");
+                    c.add(Calendar.DAY_OF_MONTH, 1);
+
+                    wfvm.setDay4(sdf2.format(c.getTime()));
+                    wfvm.setDay4Temp(temp + "°C");
+                    wfvm.setDay4Rainfall(rainfall);
+                    wfvm.setDay4image(image);
+
+                    if (determineDeviceIsTablet) {
+                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+
+                        moonInfo = MoonInfo.newInstance();
+                        fragmentTransaction.replace(R.id.fragment1, moonInfo);
+
+                        sunInfo = SunInfo.newInstance();
+                        fragmentTransaction.replace(R.id.fragment2, sunInfo);
+                        fragmentTransaction.commit();
+                    } else {
+                        viewPager.getAdapter().notifyDataSetChanged();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                try {
+                    if (error instanceof TimeoutError) {
+                        System.out.println("TimeoutError");
+                    } else if (error instanceof NoConnectionError) {
+                        System.out.println("NoConnectionError");
+                    } else if (error instanceof AuthFailureError) {
+                        System.out.println("AuthFailureError");
+                    } else if (error instanceof ServerError) {
+                        System.out.println("ServerError");
+                    } else if (error instanceof NetworkError) {
+                        System.out.println("NetworkError");
+                    } else if (error instanceof ParseError) {
+                        System.out.println("ParseError");
+                    }
+                } catch (Exception e) {
+                }
+                Toast.makeText(getApplicationContext(), "Something went wrong", Toast.LENGTH_SHORT).show();
+            }
+        }
+        );
+
         RequestQueue q = Volley.newRequestQueue(this);
-        q.add(jor);
+        q.add(jor_weather);
+        q.add(jor_forecast);
         Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_LONG).show();
     }
 }
