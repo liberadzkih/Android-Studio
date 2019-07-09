@@ -47,6 +47,8 @@ import java.util.Date;
 public class MainActivity extends AppCompatActivity {
 
     private Button optionsButton;
+    private Button setCityButton;
+    private Button refreshButton;
 
     private final FragmentManager fragmentManager = getSupportFragmentManager();
     private Fragment moonInfo;
@@ -67,8 +69,12 @@ public class MainActivity extends AppCompatActivity {
     String refreshFrequency;
 
     private ViewPager viewPager;
+    private ViewPager viewPager1;
+    private ViewPager viewPager2;
 
     private FragmentPagerAdapter fragmentPagerAdapter;
+    private FragmentPagerAdapter fragmentPagerAdapterWeather;
+    private FragmentPagerAdapter fragmentPagerAdapterSunMoon;
 
     private Handler handler;
     private Runnable timeRunnable;
@@ -101,12 +107,13 @@ public class MainActivity extends AppCompatActivity {
         determineDeviceIsTablet = getResources().getBoolean(R.bool.determineDeviceIsTablet);
 
         if (determineDeviceIsTablet) {
-            FragmentTransaction fragmentTransaction = this.fragmentManager.beginTransaction();
-            moonInfo = MoonInfo.newInstance();
-            sunInfo = SunInfo.newInstance();
-            fragmentTransaction.replace(R.id.fragment1, sunInfo);
-            fragmentTransaction.replace(R.id.fragment2, moonInfo);
-            fragmentTransaction.commit();
+            viewPager1 = findViewById(R.id.viewPager1);
+            fragmentPagerAdapterWeather = new ViewPagerAdapterWeather(getSupportFragmentManager());
+            viewPager1.setAdapter(fragmentPagerAdapterWeather);
+
+            viewPager2 = findViewById(R.id.viewPager2);
+            fragmentPagerAdapterSunMoon = new ViewPagerAdapterSunMoon(getSupportFragmentManager());
+            viewPager2.setAdapter(fragmentPagerAdapterSunMoon);
         } else {
             viewPager = findViewById(R.id.viewPager);
             fragmentPagerAdapter = new ViewPagerAdapter(getSupportFragmentManager());
@@ -123,6 +130,7 @@ public class MainActivity extends AppCompatActivity {
         longitudeValue.setText(sharedPreferences.getString("SharedpreferencesLongitude", ""));
         refreshFrequency = sharedPreferences.getString("SharedpreferencesFrequency", "");
         unit = sharedPreferences.getString("SharedpreferencesUnit", "Metric");
+        cityValue.setText(sharedPreferences.getString("SharedpreferencesCity", ""));
 
         optionsButton = findViewById(R.id.optionsButton);
         optionsButton.setOnClickListener(new View.OnClickListener() {
@@ -130,6 +138,22 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(getApplicationContext(), OptionsActivity.class);
                 startActivityForResult(intent, ACTIVITY_REQUEST_CODE);
+            }
+        });
+
+        setCityButton = findViewById(R.id.setCityButton);
+        setCityButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(getApplicationContext(), SetCityActivity.class);
+                startActivityForResult(intent, ACTIVITY_REQUEST_CODE+1);
+            }
+        });
+        refreshButton = findViewById(R.id.refreshButton);
+        refreshButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //todo
             }
         });
 
@@ -150,6 +174,7 @@ public class MainActivity extends AppCompatActivity {
             latitudeValue.setText(sharedPreferences.getString("SharedpreferencesLatitude", ""));
             longitudeValue.setText(sharedPreferences.getString("SharedpreferencesLongitude", ""));
             refreshFrequency = sharedPreferences.getString("SharedpreferencesFrequency", "");
+            cityValue.setText(sharedPreferences.getString("SharedpreferencesCity", ""));
 
             sunInfoAndMoonInfoRunnable = new Runnable() {
 
@@ -174,12 +199,8 @@ public class MainActivity extends AppCompatActivity {
                     svm.setSunInfo(suninfo);
 
                     if (determineDeviceIsTablet) {
-                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                        moonInfo = MoonInfo.newInstance();
-                        sunInfo = SunInfo.newInstance();
-                        fragmentTransaction.replace(R.id.fragment1, sunInfo);
-                        fragmentTransaction.replace(R.id.fragment2, moonInfo);
-                        fragmentTransaction.commit();
+                        viewPager1.getAdapter().notifyDataSetChanged();
+                        viewPager2.getAdapter().notifyDataSetChanged();
                     } else {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }
@@ -189,8 +210,11 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
-            if (isConnectedToNetwork()) {
-                checkTodayWeather("Warszawa", "Metric");
+
+            String city = sharedPreferences.getString("SharedpreferencesCity","");
+            String unit = sharedPreferences.getString("SharedpreferencesUnit", "");
+            if (isConnectedToNetwork() && city!=null) {
+                checkTodayWeather(city, unit);
             } else {
                 Toast.makeText(getApplicationContext(), "No network connection. \nWeather data may be outdated.", Toast.LENGTH_LONG).show();
             }
@@ -263,14 +287,8 @@ public class MainActivity extends AppCompatActivity {
                     wvm.setVisibility(visibility);
 
                     if (determineDeviceIsTablet) {
-                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-
-                        moonInfo = MoonInfo.newInstance();
-                        fragmentTransaction.replace(R.id.fragment1, moonInfo);
-
-                        sunInfo = SunInfo.newInstance();
-                        fragmentTransaction.replace(R.id.fragment2, sunInfo);
-                        fragmentTransaction.commit();
+                        viewPager1.getAdapter().notifyDataSetChanged();
+                        viewPager2.getAdapter().notifyDataSetChanged();
                     } else {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }
@@ -367,14 +385,8 @@ public class MainActivity extends AppCompatActivity {
                     wfvm.setDay4image(image);
 
                     if (determineDeviceIsTablet) {
-                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-
-                        moonInfo = MoonInfo.newInstance();
-                        fragmentTransaction.replace(R.id.fragment1, moonInfo);
-
-                        sunInfo = SunInfo.newInstance();
-                        fragmentTransaction.replace(R.id.fragment2, sunInfo);
-                        fragmentTransaction.commit();
+                        viewPager1.getAdapter().notifyDataSetChanged();
+                        viewPager2.getAdapter().notifyDataSetChanged();
                     } else {
                         viewPager.getAdapter().notifyDataSetChanged();
                     }

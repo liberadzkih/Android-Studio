@@ -20,7 +20,7 @@
             android:textSize="36sp" />
 
         <Button
-            android:id="@+id/addCityButton"
+            android:id="@+id/setCity"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"

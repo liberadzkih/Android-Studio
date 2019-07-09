@@ -27,6 +27,14 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.astroweather2app.MainActivity" />
         </activity>
+        <activity
+            android:name=".SetCityActivity"
+            android:label="@string/options_activity_name"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.example.astroweather2app.MainActivity" />
+        </activity>
 
     </application>
 
